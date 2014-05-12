@@ -1,0 +1,26 @@
+<RCC>
+    <qresource prefix="/MainWindow">
+        <file>Images/Logo.png</file>
+        <file>Images/ButtonSignIn.png</file>
+        <file>Images/ButtonSignInDown.png</file>
+        <file>Images/ButtonSignInHover.png</file>
+        <file>Images/CheckBox.png</file>
+        <file>Images/CheckBoxChecked.png</file>
+        <file>Images/CheckBoxPressed.png</file>
+        <file>Images/btnConnecting.png</file>
+        <file>Images/btnOff.png</file>
+        <file>Images/btnOn.png</file>
+        <file>Images/downArrow.png</file>
+        <file>Images/upArrow.png</file>
+        <file>Images/Settings.png</file>
+        <file>Images/ComboBoxArrow.png</file>
+        <file>Images/DiagonalArrow.png</file>
+        <file>Images/smallBtnOff.png</file>
+        <file>Images/smallBtnOn.png</file>
+        <file>Images/BackArrow.png</file>
+        <file>ovpnconfs/config.ovpn</file>
+        <file>Images/btnConnecting2.png</file>
+        <file>Images/vpnlogo-BLACK.ico</file>
+        <file>Images/vpnlogo.ico</file>
+    </qresource>
+</RCC>
