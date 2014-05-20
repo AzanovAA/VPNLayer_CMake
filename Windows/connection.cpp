@@ -154,7 +154,7 @@ void Connection::customEvent( QEvent *event )
 	}
 }
 
-void Connection::connect( PROTOCOL_TYPE protocol, QString serverIP, QString username, QString password , QString ovpnFile, QString l2tpKey)
+void Connection::connect( PROTOCOL_TYPE protocol, QString serverIP, QString username, QString password , QString ovpnFile, QString l2tpKey, QStringList dns)
 {
 	if (protocol == OpenVPN) 
 	{
@@ -272,16 +272,15 @@ void Connection::connect( PROTOCOL_TYPE protocol, QString serverIP, QString user
 	{
 		RASCREDENTIALS ras_cre_psk = {0};
 		ras_cre_psk.dwSize = sizeof(ras_cre_psk);
-        ras_cre_psk.dwMask = 0x00000010; //RASCM_PreSharedKey;
+        ras_cre_psk.dwMask = RASCM_PreSharedKey; //0x00000010; //RASCM_PreSharedKey;
 		wcscpy(ras_cre_psk.szPassword, (wchar_t *)l2tpKey.utf16());
-		DWORD ddd = ERROR_ACCESS_DENIED;
-		err = RasSetCredentials(NULL, g_szConnName, &ras_cre_psk, FALSE);
-		if (err != 0) 
+        err = RasSetCredentials(NULL, g_szConnName, &ras_cre_psk, FALSE);
+        /*if (err != 0)
 		{
 			free(devinfo);
 			emit error("RasSetCredentials return error code");
 			return;
-		}
+        }*/
 	}
 
 	RASDIALPARAMS dialparams;

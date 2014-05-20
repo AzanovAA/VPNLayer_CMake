@@ -20,7 +20,7 @@ public:
 	~Connection();
 
 	bool initialize();
-	void connect(PROTOCOL_TYPE protocol, QString serverIP, QString username, QString password, QString ovpnFile, QString l2tpKey);
+    void connect(PROTOCOL_TYPE protocol, QString serverIP, QString username, QString password, QString ovpnFile, QString l2tpKey, QStringList dns);
 	void disconnect(bool bEmitSignal);
 	bool isConnected() { return connHandle_ != NULL; }
 	bool tapInstalled();
