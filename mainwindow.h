@@ -7,7 +7,7 @@
 #include "connectwindow.h"
 #include "settingswindow.h"
 #include "getservers.h"
-#include <qDebug>
+#include <QDebug>
 #include <QSystemTrayIcon>
 #include <QMenu>
 

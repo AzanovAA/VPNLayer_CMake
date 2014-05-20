@@ -1,5 +1,5 @@
 #include "connectwindow.h"
-#include "Log.h"
+#include "log.h"
 #include <QMessageBox>
 #include <QSettings>
 #include <QTimer>

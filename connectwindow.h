@@ -7,8 +7,10 @@
 
 #if defined Q_OS_WIN
 #include "Windows/connection.h"
-#else
+#elif defined Q_OS_MAC
 #include "Mac/connection.h"
+#elif defined Q_OS_UNIX
+#include "Unix/connection.h"
 #endif
 
 #include "getservers.h"

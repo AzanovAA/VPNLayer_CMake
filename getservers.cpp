@@ -11,9 +11,18 @@ GetServers::GetServers(QObject *parent)
 {
     QString appPath = QApplication::applicationDirPath();
 
+#if defined Q_OS_WIN
+    QString savedCsvPath = appPath + "/Data/netlist.csv";
+    QString savedOVPNPath = appPath + "/Data/netlist.ovpn";
+#elif defined Q_OS_MAC
     QString savedCsvPath = appPath + "/../Resources/Bin/netlist.csv";
     QString savedOVPNPath = appPath + "/../Resources/Bin/netlist.ovpn";
+#elif defined Q_OS_UNIX
+    QString savedCsvPath = appPath + "/Data/netlist.csv";
+    QString savedOVPNPath = appPath + "/Data/netlist.ovpn";
+#endif
     loadDataFromFiles(savedCsvPath, savedOVPNPath);
+
 }
 
 void GetServers::loadDataFromFiles(QString csvPath, QString OVPNPath)
@@ -162,8 +171,17 @@ void GetServers::run()
 
     // compare existing data with updated data
     QString appPath = QApplication::applicationDirPath();
+
+#if defined Q_OS_WIN
+    QString savedCsvPath = appPath + "/Data/netlist.csv";
+    QString savedOVPNPath = appPath + "/Data/netlist.ovpn";
+#elif defined Q_OS_MAC
     QString savedCsvPath = appPath + "/../Resources/Bin/netlist.csv";
     QString savedOVPNPath = appPath + "/../Resources/Bin/netlist.ovpn";
+#elif defined Q_OS_UNIX
+    QString savedCsvPath = appPath + "/Data/netlist.csv";
+    QString savedOVPNPath = appPath + "/Data/netlist.ovpn";
+#endif
 
     QByteArray sigSavedCsv;
 

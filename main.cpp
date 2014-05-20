@@ -7,8 +7,11 @@
 
 #if defined Q_OS_WIN
 #include "QtSingleApplication/qtsingleapplication.h"
-#else
+#elif defined Q_OS_MAC
 #include "Mac/MacApplication.h"
+#elif defined Q_OS_UNIX
+#include "QtSingleApplication/qtsingleapplication.h"
+#include <unistd.h>
 #endif
 
 
@@ -16,8 +19,16 @@ int main(int argc, char *argv[])
 {
 #if defined Q_OS_WIN
     QtSingleApplication a(argc, argv);
-#else
+#elif defined Q_OS_MAC
     MacApplication a(argc, argv);
+#elif defined Q_OS_UNIX
+    QtSingleApplication a(argc, argv);
+    int err = setuid((uid_t)0);
+    if (err != 0)
+    {
+        QMessageBox::information(NULL, QObject::tr("VPNLayer"), QObject::tr("Program must be run with root permissions."));
+        return 0;
+    }
 #endif
 
     //if (a.isRunning())

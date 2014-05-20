@@ -1,12 +1,12 @@
 #include "mainwindow.h"
-#include "Utils.h"
-#include "Log.h"
-#include "Settings.h"
+#include "utils.h"
+#include "log.h"
+#include "settings.h"
 #include <QMessageBox>
 #include <QSettings>
 #include <QTimer>
 
-#ifdef Q_MAC_OS
+#ifdef Q_OS_MAC
     #include "Mac/MacApplication.h"
 #endif
 
@@ -44,7 +44,7 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
 	loginWindow_->loadSettings();
 	connect(loginWindow_, SIGNAL(signedIn(QString, QString)), SLOT(onSignIn(QString, QString)));
 
-	settingsWindow_ = new SettingsWindow(this);
+    settingsWindow_ = new SettingsWindow(this);
 	connect(settingsWindow_, SIGNAL(back()), SLOT(onBack()));
 	connect(settingsWindow_, SIGNAL(returnToSignUp()), SLOT(onReturnToSignUp()));
 	ui.verticalLayout->addWidget(settingsWindow_);
@@ -55,11 +55,11 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
 	ui.verticalLayout->addWidget(connectWindow_);
 	connectWindow_->hide();
 
-	getServers_ = new GetServers(this);
+    getServers_ = new GetServers(this);
     connect(getServers_, SIGNAL(updateFinished(bool, QString, bool)), SLOT(onUpdateFinished(bool, QString, bool)));
 	getServers_->start();
 
-	QSettings settings;
+    QSettings settings;
 	if (settings.value("savePass", "true").toString() == "true")
 	{
 		QString username = settings.value("login", "").toString();
@@ -103,14 +103,14 @@ void MainWindow::onSignIn(QString login, QString password)
         connectWindow_->setServers(getServers_->servers());
         connectWindow_->setOVPNConfig(getServers_->configOVPN());
 		connectWindow_->loadSettings();
-		connectWindow_->show();
+        connectWindow_->show();
 		adjustSize();
 		setFixedSize(size());
 		if (autoConnect_)
 		{
 			connectWindow_->autoConnect();
 			autoConnect_ = false;
-		}
+        }
 	}
     //else
     //{
@@ -241,7 +241,7 @@ void MainWindow::onShow()
     show();
     setWindowState(windowState() & ~Qt::WindowMinimized | Qt::WindowActive);
     activateWindow();
-#ifdef Q_MAC_OS
+#ifdef Q_OS_MAC
     MacApplication *macApp = (MacApplication *)QApplication::instance();
     macApp->activateIgnoring();
 #endif

@@ -4,7 +4,7 @@
 #include <QTextStream>
 #include <QDateTime>
 #include <QApplication>
-#include "Log.h"
+#include "log.h"
 
 QMutex ALog::mutex_;
 

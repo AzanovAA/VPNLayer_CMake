@@ -1,7 +1,7 @@
 #include "settingswindow.h"
 #include <QSettings>
 #include <QDir>
-#include <qlistview>
+#include <QListView>
 
 #if defined Q_OS_MAC
     #include <CoreFoundation/CoreFoundation.h>
@@ -51,7 +51,7 @@ void SettingsWindow::saveSettings()
 		QSettings settingsRun("HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", QSettings::NativeFormat);
 		settingsRun.remove("VPNLayer");
 	}
-#else
+#elif defined Q_OS_MAC
 
     bool bHasAutoRunItem  = false;
     bool bNeedAutoRunItem = ui.cbLaunchOnStart->isChecked();
