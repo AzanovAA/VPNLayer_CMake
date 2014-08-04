@@ -40,19 +40,21 @@ void GetServers::loadDataFromFiles(QString csvPath, QString OVPNPath)
         {
             QString curLine = lines[i];
             QStringList values = curLine.split(';');
-            if (values.count() == 14)
+            qDebug() << values.count();
+            if (values.count() == 13)
             {
                 ServerInfo si;
                 si.description_ = values[0].trimmed();
                 si.ip_ = values[1].trimmed();
                 si.pptp_ = values[2].trimmed().contains("Yes", Qt::CaseInsensitive);
                 si.l2tp_ = values[3].trimmed().contains("Yes", Qt::CaseInsensitive);
+                si.sstp_ = values[4].trimmed().contains("Yes", Qt::CaseInsensitive);
                 si.openvpn_ = values[5].trimmed().contains("Yes", Qt::CaseInsensitive);
-                si.l2tpKey_ = values[6];
+                si.l2tpKey_ = values[8];
 
-                QString dns1 = values[8].trimmed();
-                QString dns2 = values[9].trimmed();
-                QString dns3 = values[10].trimmed();
+                QString dns1 = values[10].trimmed();
+                QString dns2 = values[11].trimmed();
+                QString dns3 = values[12].trimmed();
 
                 if (!dns1.isEmpty())
                     si.dns_ << dns1;
@@ -95,7 +97,7 @@ QByteArray GetServers::configOVPN()
 
 void GetServers::run()
 {
-    QNetworkAccessManager *manager = new QNetworkAccessManager();
+   /* QNetworkAccessManager *manager = new QNetworkAccessManager();
 	QEventLoop eventLoop;
 	eventLoop.connect(manager, SIGNAL(finished(QNetworkReply *)), SLOT(quit()));
 
@@ -253,6 +255,6 @@ void GetServers::run()
     }
 
     reply->deleteLater();
-    manager->deleteLater();
+    manager->deleteLater();*/
 }
 

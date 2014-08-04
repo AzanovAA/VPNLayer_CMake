@@ -13,6 +13,7 @@ struct ServerInfo
 	bool	l2tp_;
 	QString l2tpKey_;
 	bool	openvpn_;
+    bool    sstp_;
     QStringList dns_;
     QString ovpnUrl_;
 };
