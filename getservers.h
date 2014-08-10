@@ -15,7 +15,7 @@ struct ServerInfo
 	bool	openvpn_;
     bool    sstp_;
     QStringList dns_;
-    QString ovpnUrl_;
+    //QString ovpnUrl_;
 };
 
 

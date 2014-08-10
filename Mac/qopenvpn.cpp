@@ -30,6 +30,15 @@ QOpenVPN::QOpenVPN(QObject *parent)
      //      , this , SLOT(processHasOutput()) );
 
     uuid_ = QUuid::createUuid().toString();
+
+    QString tool = QApplication::applicationDirPath()
+                     + "/../Resources/Bin/settings";
+
+        {
+            QProcess process;
+            process.start( tool, QStringList() << "fix_permissions" );
+            process.waitForFinished();
+        }
 }
 
 QOpenVPN::~QOpenVPN()
@@ -101,7 +110,7 @@ bool QOpenVPN::connect(QString username, QString password, QString ovpnFile, QSt
     QString tool = QApplication::applicationDirPath()
                      + "/../Resources/Bin/settings";
 
-        {
+        /*{
             QProcess process;
             process.start( tool, QStringList() << "fix_permissions" );
             process.waitForFinished();
@@ -111,7 +120,7 @@ bool QOpenVPN::connect(QString username, QString password, QString ovpnFile, QSt
             QProcess process;
             process.start( tool, QStringList() << "unload_kexts" );
             process.waitForFinished();
-        }
+        }*/
 
         {
             QProcess process;
@@ -201,7 +210,7 @@ void QOpenVPN::onReadyRead()
                              + "/../Resources/Bin/settings";
 
             QProcess process;
-            process.start( tool, QStringList() << "dns_on" );
+            process.start( tool, QStringList() << "dns_on" << dns_ );
             process.waitForFinished();
             bDnsChanged_ = true;
 
@@ -244,7 +253,6 @@ void QOpenVPN::onReadyRead()
 
 void QOpenVPN::disconnect(bool bEmitSignal)
 {
-    qDebug() << "Didddddddddddd";
     process_.blockSignals(true);
 
     QString toolStop = QApplication::applicationDirPath() + "/../Resources/Bin/stop";
@@ -260,7 +268,6 @@ void QOpenVPN::disconnect(bool bEmitSignal)
             process.waitForFinished();
         }
 
-
         if (bDnsChanged_)
         {
             QProcess process;
@@ -269,11 +276,10 @@ void QOpenVPN::disconnect(bool bEmitSignal)
             bDnsChanged_ = false;
         }
 
-
-	if (bConnected_ && bEmitSignal)
+    if (/*bConnected_ &&*/ bEmitSignal)
 	{
 		emit disconnected(false);
-	}
+    }
     bConnected_ = false;
 }
 

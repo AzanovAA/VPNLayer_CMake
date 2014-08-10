@@ -52,7 +52,6 @@ ConnectWindow::ConnectWindow(QWidget *parent)
 		ui.cbServer->addItem(it.key());
 	}*/
 }
-
 ConnectWindow::~ConnectWindow()
 {
 	connection_.disconnect(false);
@@ -245,8 +244,8 @@ void ConnectWindow::makeOVPNFile(QString protocolPort, QString server, QByteArra
         str = "rport " + port + "\r\n";
         configFile.write(str.toLocal8Bit());
 
-        configFile.write("ca ca.crt\r\n");
-        configFile.write("tls-auth ta.key 1\r\n");
+        //configFile.write("ca ca.crt\r\n");
+        //configFile.write("tls-auth ta.key 1\r\n");
 
         //str = "status file.txt 1\r\n";
         //ovpnFile.write(str.toLocal8Bit());

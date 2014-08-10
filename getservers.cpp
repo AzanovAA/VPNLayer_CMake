@@ -40,8 +40,7 @@ void GetServers::loadDataFromFiles(QString csvPath, QString OVPNPath)
         {
             QString curLine = lines[i];
             QStringList values = curLine.split(';');
-            qDebug() << values.count();
-            if (values.count() == 13)
+            if (values.count() == 11)
             {
                 ServerInfo si;
                 si.description_ = values[0].trimmed();
@@ -50,11 +49,11 @@ void GetServers::loadDataFromFiles(QString csvPath, QString OVPNPath)
                 si.l2tp_ = values[3].trimmed().contains("Yes", Qt::CaseInsensitive);
                 si.sstp_ = values[4].trimmed().contains("Yes", Qt::CaseInsensitive);
                 si.openvpn_ = values[5].trimmed().contains("Yes", Qt::CaseInsensitive);
-                si.l2tpKey_ = values[8];
+                si.l2tpKey_ = values[6];
 
-                QString dns1 = values[10].trimmed();
-                QString dns2 = values[11].trimmed();
-                QString dns3 = values[12].trimmed();
+                QString dns1 = values[8].trimmed();
+                QString dns2 = values[9].trimmed();
+                QString dns3 = values[10].trimmed();
 
                 if (!dns1.isEmpty())
                     si.dns_ << dns1;
@@ -63,7 +62,7 @@ void GetServers::loadDataFromFiles(QString csvPath, QString OVPNPath)
                 if (!dns3.isEmpty())
                     si.dns_ << dns3;
 
-                si.ovpnUrl_ = values[11];
+                //si.ovpnUrl_ = values[11];
                 servers_ << si;
             }
         }
@@ -97,7 +96,7 @@ QByteArray GetServers::configOVPN()
 
 void GetServers::run()
 {
-   /* QNetworkAccessManager *manager = new QNetworkAccessManager();
+    QNetworkAccessManager *manager = new QNetworkAccessManager();
 	QEventLoop eventLoop;
 	eventLoop.connect(manager, SIGNAL(finished(QNetworkReply *)), SLOT(quit()));
 
@@ -125,15 +124,16 @@ void GetServers::run()
 	{
 		QString curLine = lines[i];
 		QStringList values = curLine.split(';');
-        if (values.count() == 14)
+        if (values.count() == 11)
 		{
-			ServerInfo si;
-			si.description_ = values[0].trimmed();
-			si.ip_ = values[1].trimmed();
-			si.pptp_ = values[2].trimmed().contains("Yes", Qt::CaseInsensitive);
-			si.l2tp_ = values[3].trimmed().contains("Yes", Qt::CaseInsensitive);
-			si.openvpn_ = values[5].trimmed().contains("Yes", Qt::CaseInsensitive);
-			si.l2tpKey_ = values[6];
+            ServerInfo si;
+            si.description_ = values[0].trimmed();
+            si.ip_ = values[1].trimmed();
+            si.pptp_ = values[2].trimmed().contains("Yes", Qt::CaseInsensitive);
+            si.l2tp_ = values[3].trimmed().contains("Yes", Qt::CaseInsensitive);
+            si.sstp_ = values[4].trimmed().contains("Yes", Qt::CaseInsensitive);
+            si.openvpn_ = values[5].trimmed().contains("Yes", Qt::CaseInsensitive);
+            si.l2tpKey_ = values[6];
 
             QString dns1 = values[8].trimmed();
             QString dns2 = values[9].trimmed();
@@ -146,7 +146,7 @@ void GetServers::run()
             if (!dns3.isEmpty())
                 si.dns_ << dns3;
 
-            QString ovpnUrl = values[11];
+            /*QString ovpnUrl = values[11];
             QString crtUrl = values[12];
             QString keyUrl = values[13];
 
@@ -166,7 +166,7 @@ void GetServers::run()
                 QTextStream ds(&downloadConfigOVPN, QIODevice::WriteOnly);
                 ds << ovpnFile.data();
 
-            }
+            }*/
             downloadServers << si;
 		}
     }
@@ -198,7 +198,7 @@ void GetServers::run()
         sigSavedCsv = hash.result();
     }
 
-    QByteArray sigSavedOVPN;
+    /*QByteArray sigSavedOVPN;
     {
         QCryptographicHash hash( QCryptographicHash::Sha1 );
         QFile file(savedOVPNPath);
@@ -208,7 +208,7 @@ void GetServers::run()
             hash.addData( file.readAll() );
         }
         sigSavedOVPN = hash.result();
-    }
+    }*/
 
     QByteArray sigNewCsv;
     {
@@ -217,19 +217,19 @@ void GetServers::run()
         sigNewCsv = hash.result();
     }
 
-    QByteArray sigNewOVPN;
+    /*QByteArray sigNewOVPN;
     {
         QCryptographicHash hash( QCryptographicHash::Sha1 );
         hash.addData( downloadConfigOVPN );
         sigNewOVPN = hash.result();
-    }
+    }*/
 
     //qDebug() << sigSavedCsv;
     //qDebug() << sigNewCsv;
     //qDebug() << sigSavedOVPN;
     //qDebug() << sigNewOVPN;
 
-    if (sigSavedCsv != sigNewCsv || sigSavedOVPN != sigNewOVPN)
+    if (sigSavedCsv != sigNewCsv /*|| sigSavedOVPN != sigNewOVPN*/)
     {
         {
             QFile file(savedCsvPath);
@@ -240,7 +240,7 @@ void GetServers::run()
                 file.close();
             }
         }
-        {
+        /*{
             QFile file(savedOVPNPath);
 
             if (file.open(QIODevice::WriteOnly))
@@ -248,13 +248,13 @@ void GetServers::run()
                 file.write(downloadConfigOVPN);
                 file.close();
             }
-        }
+        }*/
 
         loadDataFromFiles(savedCsvPath, savedOVPNPath);
         emit updateFinished(true, QString(), true);
     }
 
     reply->deleteLater();
-    manager->deleteLater();*/
+    manager->deleteLater();
 }
 

@@ -191,7 +191,7 @@ void MainWindow::setTrayStatusConnected()
     trayIcon_->setToolTip("Connection is secured");
 
     QString msg = tr("Your internet traffic is encrypted and secured now!");
-    trayIcon_->showMessage(tr("VPNLayer"), msg);
+    ///trayIcon_->showMessage(tr("VPNLayer"), msg);
 }
 
 void MainWindow::setTrayStatusDisconnected(bool bShowMessage)
@@ -208,7 +208,7 @@ void MainWindow::setTrayStatusDisconnected(bool bShowMessage)
     if (bShowMessage)
     {
         QString msg = tr("Your internet traffic is not secured anymore");
-        trayIcon_->showMessage(tr("VPNLayer"), msg);
+        ///trayIcon_->showMessage(tr("VPNLayer"), msg);
     }
 }
 

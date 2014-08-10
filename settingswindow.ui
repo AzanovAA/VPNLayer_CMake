@@ -463,12 +463,37 @@ min-height: 20px;
        </property>
        <item>
         <property name="text">
+         <string>TCP 53</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>TCP 80</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
          <string>TCP 443</string>
         </property>
        </item>
        <item>
         <property name="text">
          <string>TCP 1194</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>UDP 53</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>UDP 80</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>UDP 443</string>
         </property>
        </item>
        <item>
