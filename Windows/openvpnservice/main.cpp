@@ -47,98 +47,347 @@
 #include <QDir>
 #include <QSettings>
 #include <QProcess>
+#include <QThread>
+#include <QLocalServer>
+#include <QLocalSocket>
+#include <QSharedMemory>
+#include <windows.h>
+#include "log.h"
 
 #include "src/qtservice.h"
 
-// HttpDaemon is the the class that implements the simple HTTP server.
-class HttpDaemon : public QTcpServer
+
+class ServerDaemon : public QThread
 {
     Q_OBJECT
 public:
-    HttpDaemon(quint16 port, QObject* parent = 0)
-        : QTcpServer(parent), disabled(false)
+    ServerDaemon(QString appPath, QObject * parent = 0) : QThread(parent), hExitEvent_(NULL),
+        appPath_(appPath), state_(Disconnected), socket_(NULL), bFinished_(false), sharedMemory("VPNLayedShared")
     {
-        listen(QHostAddress::Any, port);
+        errorsWhileConnecting_ << "TLS Error: Need PEM pass phrase for private key" <<
+            "EVP_DecryptFinal:bad decrypt" <<
+            "PKCS12_parse:mac verify failure" <<
+            "Received AUTH_FAILED control message" <<
+            "Auth username is empty" <<
+            "error=certificate has expired" <<
+            "error=certificate is not yet valid";
+
+        exitEventName_ = "vpnlayer_exit_event";
+        if (sharedMemory.create(4096))
+        {
+            ALog::Out("Shared Memory Created");
+        }
+        else
+        {
+            ALog::Out("Shared Memory Error: " + sharedMemory.errorString());
+        }
+        //localServer_ = new QLocalServer(this);
+        //localServer_->listen("\\\\.\\pipe\\vpnlayer");
+        //connect(localServer_, SIGNAL(newConnection()), SLOT(socketNewConnection()));
+
+        //connect(&process_, SIGNAL(readyRead()), SLOT(onOpenVPNReadyRead()));
+        //connect(&process_, SIGNAL(finished(int, QProcess::ExitStatus)), SLOT(onOpenVPNFinished()));
+        //start();
     }
 
-    void incomingConnection(int socket)
+    virtual ~ServerDaemon()
     {
-        if (disabled)
-            return;
-
-        // When a new client connects, the server constructs a QTcpSocket and all
-        // communication with the client is done over this QTcpSocket. QTcpSocket
-        // works asynchronously, this means that all the communication is done
-        // in the two slots readClient() and discardClient().
-        QTcpSocket* s = new QTcpSocket(this);
-        connect(s, SIGNAL(readyRead()), this, SLOT(readClient()));
-        connect(s, SIGNAL(disconnected()), this, SLOT(discardClient()));
-        s->setSocketDescriptor(socket);
-
-        QtServiceBase::instance()->logMessage("New Connection");
+        bFinished_ = true;
     }
 
-    void pause()
+
+protected:
+    void run()
     {
-        disabled = true;
-    }
+        while (!bFinished_)
+        {
+            msleep(1);
+            if (socket_ && socket_->isOpen())
+            {
+                if (socket_->bytesAvailable() >= sizeof(unsigned int))
+                {
+                    QDataStream stream(socket_);
+                    unsigned int commandId;
+                    stream >> commandId;
+                    if (commandId == ConnectCommandId && state_ == Disconnected)
+                    {
+                        ALog::Out("ConnectCommand");
+                        QString username, password, ovpnFile, configPath;
+                        stream >> username;
+                        stream >> password;
+                        stream >> ovpnFile;
+                        stream >> configPath;
 
-    void resume()
-    {
-        disabled = false;
-    }
+                        hExitEvent_ = CreateEventW (NULL, TRUE, FALSE, (wchar_t *)exitEventName_.utf16());
 
-private slots:
-    void readClient()
-    {
-        if (disabled)
-            return;
+                        userName_ = username;
+                        password_ = password;
 
-        // This slot is called when the client sent data to the server. The
-        // server looks if it was a get request and sends a very simple HTML
-        // document back.
-        QTcpSocket* socket = (QTcpSocket*)sender();
-        if (socket->canReadLine()) {
-            QStringList tokens = QString(socket->readLine()).split(QRegExp("[ \r\n][ \r\n]*"));
-            if (tokens[0] == "GET") {
-                QTextStream os(socket);
-                os.setAutoDetectUnicode(true);
-                os << "HTTP/1.0 200 Ok\r\n"
-                    "Content-Type: text/html; charset=\"utf-8\"\r\n"
-                    "\r\n"
-                    "<h1>Nothing to see here</h1>\n"
-                    << QDateTime::currentDateTime().toString() << "\n";
-                socket->close();
+                        QStringList commandParams;
+                        commandParams << "--service" << exitEventName_ << "0" << "--config" << ovpnFile;
 
-                QtServiceBase::instance()->logMessage("Wrote to client");
+                        QString openVPNExePath = appPath_ + "/openvpn.exe";
 
-                if (socket->state() == QTcpSocket::UnconnectedState) {
-                    delete socket;
-                    QtServiceBase::instance()->logMessage("Connection closed");
+                        process_.setWorkingDirectory(configPath);
+                        process_.setProcessChannelMode(QProcess::MergedChannels);
+                        process_.start(openVPNExePath, commandParams, QIODevice::ReadWrite | QIODevice::Text);
+                        state_ = Connecting;
+                    }
+                    else if (commandId == DisconnectCommandId && state_ != Disconnected)
+                    {
+                        ALog::Out("DisconnectCommand");
+                        if (hExitEvent_)
+                        {
+                            SetEvent(hExitEvent_);
+                            process_.blockSignals(true);
+                            process_.waitForFinished();
+                            process_.blockSignals(false);
+                            CloseHandle(hExitEvent_);
+                            hExitEvent_ = NULL;
+
+                            QDataStream stream(socket_);
+                            unsigned int commandDisconnected = 2;
+                            stream << commandDisconnected;
+                            stream << false;
+                            state_ = Disconnected;
+                        }
+                    }
                 }
             }
         }
-    }
-    void discardClient()
-    {
-        QTcpSocket* socket = (QTcpSocket*)sender();
-        socket->deleteLater();
 
-        QtServiceBase::instance()->logMessage("Connection closed");
+    }
+
+private slots:
+    void socketNewConnection()
+    {
+        QLocalSocket *clientConnection = localServer_->nextPendingConnection();
+        if (socket_ == NULL)
+        {
+            socket_ = clientConnection;
+            clientConnection->connect(socket_, SIGNAL(disconnected()), SLOT(onDisconnected()));
+        }
+        else
+        {
+            clientConnection->close();
+            clientConnection->deleteLater();
+        }
+        //connect(clientConnection, SIGNAL(readyRead()), SLOT(onReadyRead()));
+        //clientConnection->connect(clientConnection, SIGNAL(disconnected()), SLOT(deleteLater()));
+    }
+
+    void onDisconnected()
+    {
+        socket_->deleteLater();
+        socket_ = NULL;
+    }
+
+    /*void onReadyRead()
+    {
+        socket_ = dynamic_cast<QLocalSocket *>(sender());
+        if (socket_)
+        {
+            QDataStream stream(socket_);
+            unsigned int commandId;
+            stream >> commandId;
+            if (commandId == ConnectCommandId && state_ == Disconnected)
+            {
+                ALog::Out("ConnectCommand");
+                QString username, password, ovpnFile, configPath;
+                stream >> username;
+                stream >> password;
+                stream >> ovpnFile;
+                stream >> configPath;
+
+                hExitEvent_ = CreateEventW (NULL, TRUE, FALSE, (wchar_t *)exitEventName_.utf16());
+
+                userName_ = username;
+                password_ = password;
+
+                QStringList commandParams;
+                commandParams << "--service" << exitEventName_ << "0" << "--config" << ovpnFile;
+
+                QString openVPNExePath = appPath_ + "/openvpn.exe";
+
+                process_.setWorkingDirectory(configPath);
+                process_.setProcessChannelMode(QProcess::MergedChannels);
+                process_.start(openVPNExePath, commandParams, QIODevice::ReadWrite | QIODevice::Text);
+                state_ = Connecting;
+            }
+            else if (commandId == DisconnectCommandId && state_ != Disconnected)
+            {
+                ALog::Out("DisconnectCommand");
+                if (hExitEvent_)
+                {
+                    SetEvent(hExitEvent_);
+                    process_.blockSignals(true);
+                    process_.waitForFinished();
+                    process_.blockSignals(false);
+                    CloseHandle(hExitEvent_);
+                    hExitEvent_ = NULL;
+
+                    QDataStream stream(socket_);
+                    unsigned int commandDisconnected = 2;
+                    stream << commandDisconnected;
+                    stream << false;
+                    state_ = Disconnected;
+                }
+            }
+        }
+    }*/
+
+    bool containsWhileConnectingError(QString line, QString &err)
+    {
+        foreach(QString s, errorsWhileConnecting_)
+        {
+            if (line.contains(s, Qt::CaseInsensitive))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void sendLog(QString message)
+    {
+        if (socket_)
+        {
+            QDataStream stream(socket_);
+            unsigned int commandLog = LogCommandId;
+            stream << commandLog;
+            stream << message;
+        }
+    }
+
+    void onOpenVPNReadyRead()
+    {
+        QByteArray data = process_.readLine();
+        QString err;
+        while (!data.isEmpty())
+        {
+            QString line = data;
+            if (line.contains("Enter Auth Username:", Qt::CaseInsensitive))
+            {
+                process_.write(userName_.toLocal8Bit());
+            }
+            else if (line.contains("Enter Auth Password:", Qt::CaseInsensitive))
+            {
+                process_.write(password_.toLocal8Bit());
+            }
+            else if (line.contains("Initialization Sequence Completed", Qt::CaseInsensitive))
+            {
+                state_ = Connected;
+                {
+                    QDataStream stream(socket_);
+                    unsigned int commandConnected = ConnectCommandId;
+                    stream << commandConnected;
+                }
+                sendLog(line.trimmed());
+                //emit connected();
+                ALog::Out(line.trimmed());
+            }
+            else if (containsWhileConnectingError(line, err))
+            {
+               // emit log(line);
+                //emit error(err);
+                ALog::Out(line.trimmed());
+                {
+                    QDataStream stream(socket_);
+                    unsigned int commandError = ErrorCommandId;
+                    stream << commandError;
+                    stream << err;
+                }
+                sendLog(line.trimmed());
+            }
+            else if (state_ == Connected && line.contains("process restarting", Qt::CaseInsensitive))
+            {
+                if (hExitEvent_)
+                {
+                    SetEvent(hExitEvent_);
+                    process_.blockSignals(true);
+                    process_.waitForFinished();
+                    process_.blockSignals(false);
+                    CloseHandle(hExitEvent_);
+                    hExitEvent_ = NULL;
+
+                    QDataStream stream(socket_);
+                    unsigned int commandDisconnected = DisconnectCommandId;
+                    stream << commandDisconnected;
+                    stream << true;
+                    state_ = Disconnected;
+                }
+
+               // emit disconnected(true);
+               // bConnected_ = false;
+            }
+            else
+            {
+               // emit log(line);
+            }
+
+            sendLog(line.trimmed());
+            ALog::Out(line.trimmed());
+
+            //qDebug() << data;
+            data = process_.readLine();
+        }
+    }
+
+    void onOpenVPNFinished()
+    {
+        if (state_ == Connected)
+        {
+            if (hExitEvent_)
+            {
+                CloseHandle(hExitEvent_);
+                hExitEvent_ = NULL;
+            }
+
+            QDataStream stream(socket_);
+            unsigned int commandDisconnected = DisconnectCommandId;
+            stream << commandDisconnected;
+            stream << true;
+
+            //emit disconnected(true);
+        }
+        else
+        {
+            QDataStream stream(socket_);
+            unsigned int commandDisconnected = DisconnectCommandId;
+            stream << commandDisconnected;
+            stream << true;
+            //emit error("OpenVPN connect error 2");
+            //emit disconnected(true);
+        }
     }
 
 private:
-    bool disabled;
+    enum { ConnectCommandId = 1, DisconnectCommandId = 2, LogCommandId = 3, ErrorCommandId = 4};
+    enum { Connecting = 0, Connected = 1, Disconnected = 2 };
+    QLocalServer *localServer_;
+    QString exitEventName_;
+    HANDLE hExitEvent_;
+    QString userName_;
+    QString password_;
+    QProcess process_;
+    QString appPath_;
+    int state_;
+    QStringList errorsWhileConnecting_;
+    QLocalSocket *socket_;
+    bool bFinished_;
+    QSharedMemory sharedMemory;
 };
 
-class HttpService : public QtService<QCoreApplication>
+
+class VPNService : public QtService<QCoreApplication>
 {
 public:
-    HttpService(int argc, char **argv)
-	: QtService<QCoreApplication>(argc, argv, "Qt HTTP Daemon")
+    VPNService(int argc, char **argv)
+    : QtService<QCoreApplication>(argc, argv, "VPNLayer OpenVPN Daemon")
     {
-        setServiceDescription("A dummy HTTP service implemented with Qt");
-        setServiceFlags(QtServiceBase::CanBeSuspended);
+        setServiceDescription("VPNLayer OpenVPN Daemon");
+        //setServiceFlags(QtServiceBase::CanBeSuspended);
     }
 
 protected:
@@ -146,49 +395,12 @@ protected:
     {
         QCoreApplication *app = application();
 
-        QString appPath = app->applicationDirPath();
-        QString fileName = appPath + "/log.txt";
-        QString fileOpenVPN = appPath + "/openvpn.exe";
-        file.setFileName(fileName);
-        if (file.open(QIODevice::WriteOnly))
-        {
-            QProcess process;
-            process.start(fileOpenVPN);
-            process.waitForFinished();
-            file.write("Started\n");
-            file.write(process.readAll());
-            //file.write(appPath.toStdString().c_str());
-        }
-
-
-/*#if QT_VERSION < 0x040100
-        quint16 port = (app->argc() > 1) ?
-                QString::fromLocal8Bit(app->argv()[1]).toUShort() : 8080;
-#else
-        const QStringList arguments = QCoreApplication::arguments();
-        quint16 port = (arguments.size() > 1) ?
-                arguments.at(1).toUShort() : 8080;
-#endif
-        daemon = new HttpDaemon(port, app);
-
-        if (!daemon->isListening()) {
-            logMessage(QString("Failed to bind to port %1").arg(daemon->serverPort()), QtServiceBase::Error);
-            app->quit();
-        }*/
-    }
-
-    void pause()
-    {
-    //daemon->pause();
-    }
-
-    void resume()
-    {
-    //daemon->resume();
+        ALog::path_ = app->applicationDirPath();
+        server = new ServerDaemon(app->applicationDirPath(), app);
     }
 
 private:
-    //HttpDaemon *daemon;
+    ServerDaemon *server;
     QFile file;
 };
 
@@ -196,12 +408,6 @@ private:
 
 int main(int argc, char **argv)
 {
-#if !defined(Q_OS_WIN)
-    // QtService stores service settings in SystemScope, which normally require root privileges.
-    // To allow testing this example as non-root, we change the directory of the SystemScope settings file.
-    QSettings::setPath(QSettings::NativeFormat, QSettings::SystemScope, QDir::tempPath());
-    qWarning("(Example uses dummy settings file: %s/QtSoftware.conf)", QDir::tempPath().toLatin1().constData());
-#endif
-    HttpService service(argc, argv);
+    VPNService service(argc, argv);
     return service.exec();
 }
